@@ -39,3 +39,21 @@ A lightweight, zero-dependency HTML5 Canvas visualizer for fleet situational awa
 ├── Dockerfile                  # Grader Deployment Config
 ├── LICENSE                     # MIT License
 └── requirements.txt            # System Dependencies
+## Auto-Grader Deployment Instructions
+This system is fully containerized and complies with the `ubuntu:22.04` environment requirements for automated testing.
+
+**1. Build the image:**
+```bash
+docker build -t vyom-sarathi .
+```
+
+**2. Run the ACM:**
+```bash
+docker run -p 8000:8000 vyom-sarathi
+```
+
+* **API Access:** The REST endpoints are exposed at `http://localhost:8000`.
+* **Visualizer:** Open `dashboard/index.html` directly in any modern web browser to view the live telemetry feed.
+
+---
+*Architected for the National Space Hackathon 2026 by Priyanshu Chauhan.*
