@@ -1,148 +1,260 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VYOM-SARATHI | Tactical ACM Dashboard</title>
+    <title>VYOM-SARATHI | Tactical Command</title>
     <style>
         /* ==========================================================================
-           Vyom-Sarathi ACM: Orbital Insight FDO Dashboard
-           Architecture: CSS Grid Layout, Zero-Dependency Canvas API Rendering
+           DESIGN SYSTEM & THEMING
+           Utilizing CSS variables at the :root level for O(1) theme toggling without 
+           requiring expensive DOM reflows or JavaScript class manipulation.
            ========================================================================== */
-
-        :root {
-            /* FDO Console Color Palette */
-            --bg: #050914;
-            --panel: #0d1326;
+        :root[data-theme="dark"] {
+            --bg: #03060d; 
+            --panel: #0a1122;
             --text: #a0aec0;
             --accent: #00ffcc;
+            --border: rgba(0, 255, 204, 0.2);
+            --panel-bg: rgba(10, 17, 34, 0.85);
             --warning: #ff3366;
-            --nominal: #33ff99;
+            --nominal: #00ff66;
             --critical: #ff9900;
         }
         
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root[data-theme="light"] {
+            --bg: #f1f5f9; 
+            --panel: #ffffff;
+            --text: #334155;
+            --accent: #0284c7;
+            --border: rgba(148, 163, 184, 0.5);
+            --panel-bg: rgba(255, 255, 255, 0.95);
+            --warning: #e53e3e;
+            --nominal: #10b981;
+            --critical: #f59e0b;
+        }
+        
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s; 
+        }
         
         body {
             background-color: var(--bg);
             color: var(--text);
-            font-family: 'Consolas', 'Courier New', monospace; /* Monospace for tabular data alignment */
+            font-family: 'Consolas', 'Courier New', monospace;
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Prevents scroll-bounce during rapid telemetry updates */
+            overflow: hidden; 
         }
 
-        /* --- Global Header --- */
+        /* --- Header & Typography --- */
         header {
             padding: 12px 20px;
             background: var(--panel);
-            border-bottom: 1px solid rgba(0, 255, 204, 0.2);
+            border-bottom: 2px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
             height: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        header h1 { font-size: 1.2rem; color: var(--accent); letter-spacing: 2px; }
-        .sys-clock { font-size: 1rem; color: #fff; font-weight: bold; }
+        header h1 { 
+            font-size: 1.2rem; 
+            color: var(--accent); 
+            letter-spacing: 2px; 
+            text-shadow: 0 0 5px var(--border); 
+            font-weight: bold;
+        }
+        .sys-clock { 
+            font-size: 1rem; 
+            color: var(--text); 
+            font-weight: bold; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px;
+        }
+        
+        #theme-toggle { 
+            background: none; 
+            border: 1px solid var(--border); 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            cursor: pointer; 
+            font-size: 1.2rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            color: var(--text); 
+            transition: all 0.2s; 
+        }
+        #theme-toggle:hover { 
+            background: var(--accent); 
+            color: var(--bg); 
+        }
 
-        /* --- NSH 2026 Section 6.2 Required Layout --- 
-           Utilizes CSS Grid to prevent DOM reflows when canvas elements resize */
+        /* --- CSS Grid Layout --- */
         .dashboard-grid {
             display: grid;
             grid-template-columns: 2.5fr 1fr;
             grid-template-rows: 2fr 1fr;
-            gap: 10px;
-            padding: 10px;
+            gap: 15px;
+            padding: 15px;
             height: calc(100vh - 50px);
         }
 
         .panel {
-            background: var(--panel);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 4px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--border);
+            border-radius: 6px;
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .panel-header {
-            background: rgba(0,0,0,0.3);
-            padding: 8px 10px;
-            font-size: 0.75rem;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 10px 15px;
+            font-size: 0.8rem;
             text-transform: uppercase;
             color: var(--accent);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
+            font-weight: bold;
+            z-index: 10;
         }
 
-        /* --- Module 1: Ground Track (Mercator) --- */
-        .module-map { grid-column: 1 / 2; grid-row: 1 / 2; }
-        #orbit-map { width: 100%; height: 100%; display: block; flex: 1; }
+        /* --- Canvas Modules --- */
+        .module-map { grid-column: 1 / 2; grid-row: 1 / 2; position: relative; }
+        #orbit-map { width: 100%; height: 100%; display: block; flex: 1; cursor: grab; background: #050914; }
+        #orbit-map:active { cursor: grabbing; }
 
-        /* --- Module 2: Conjunction Bullseye (Polar) --- */
         .module-bullseye { grid-column: 2 / 3; grid-row: 1 / 2; }
         #bullseye-map { width: 100%; height: 250px; display: block; }
         
-        /* --- Module 3: Active Telemetry Feed --- */
-        .telemetry-container { flex: 1; overflow-y: auto; padding: 10px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-        th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        th { color: var(--accent); position: sticky; top: 0; background: var(--panel); }
-        .val-good { color: var(--nominal); }
-        .val-warn { color: var(--critical); }
-        .val-bad { color: var(--warning); }
+        /* --- Telemetry Data Table --- */
+        .telemetry-container { flex: 1; overflow-y: auto; padding: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { text-align: left; padding: 8px 15px; border-bottom: 1px solid var(--border); }
+        th { 
+            color: var(--accent); 
+            position: sticky; 
+            top: 0; 
+            background: var(--panel-bg); 
+            z-index: 5; 
+            border-bottom: 2px solid var(--border); 
+        }
+        
+        /* Dynamic Fuel Bars */
+        .fuel-bar-bg { width: 100%; background: rgba(160, 174, 192, 0.2); height: 6px; border-radius: 3px; margin-top: 6px; }
+        .fuel-bar-fg { height: 100%; border-radius: 3px; transition: width 0.3s; box-shadow: 0 0 8px currentColor; }
 
-        /* --- Module 4: Maneuver Timeline (Gantt) --- */
-        .module-timeline { grid-column: 1 / 3; grid-row: 2 / 3; padding: 10px;}
-        .gantt-row { display: flex; align-items: center; margin-bottom: 5px; font-size: 0.75rem;}
-        .gantt-label { width: 80px; color: #fff;}
-        .gantt-track { flex: 1; height: 15px; background: rgba(255,255,255,0.05); position: relative; border-radius: 2px;}
-        .gantt-block { position: absolute; height: 100%; background: var(--nominal); opacity: 0.8; border-radius: 2px;}
-        .gantt-cooldown { background: var(--warning); opacity: 0.5; }
+        /* Hardware Status Animations */
+        @keyframes strobe { 
+            0% { opacity: 1; text-shadow: 0 0 10px var(--warning); } 
+            50% { opacity: 0.4; } 
+            100% { opacity: 1; text-shadow: 0 0 10px var(--warning); } 
+        }
+        .status-outage { color: var(--warning); font-weight: bold; animation: strobe 1s infinite; }
+        .status-nominal { color: var(--nominal); font-weight: bold; }
 
-        /* Custom OS-level scrollbar styling for seamless integration */
+        /* --- Gantt Chart Timeline --- */
+        .module-timeline { grid-column: 1 / 3; grid-row: 2 / 3; padding: 10px; display: flex; flex-direction: column; }
+        .timeline-axis { 
+            display: flex; 
+            padding-left: 80px; 
+            margin-bottom: 5px; 
+            color: var(--accent); 
+            font-size: 0.7rem; 
+            font-weight: bold; 
+            border-bottom: 1px solid var(--border); 
+            padding-bottom: 5px;
+        }
+        .time-tick { flex: 1; border-left: 1px solid var(--border); padding-left: 5px; }
+
+        .gantt-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.85rem; }
+        .gantt-label { width: 80px; color: var(--text); font-weight: bold; }
+        .gantt-track { 
+            flex: 1; 
+            height: 20px; 
+            background: rgba(160, 174, 192, 0.1); 
+            position: relative; 
+            border-radius: 4px; 
+            overflow: hidden; 
+            border: 1px solid var(--border);
+        }
+        
+        .burn-chevron { 
+            position: absolute; 
+            height: 100%; 
+            color: var(--warning); 
+            font-weight: 900; 
+            line-height: 20px; 
+            font-size: 1.2rem; 
+            transform: translateX(-50%); 
+            text-shadow: 0 0 5px var(--warning);
+        }
+        .cooldown-block { 
+            position: absolute; 
+            height: 100%; 
+            background: var(--warning); 
+            opacity: 0.3; 
+            border-radius: 4px;
+        }
+
+        /* Custom Scrollbars */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
-        ::-webkit-scrollbar-thumb { background: var(--accent); }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Vyom-Sarathi ACM</h1>
-        <div class="sys-clock" id="clock">T-ZERO STANDBY</div>
+        <h1>VYOM-SARATHI // TACTICAL COMMAND</h1>
+        <div class="sys-clock">
+            <span id="clock">AWAITING TELEMETRY</span>
+            <button id="theme-toggle" title="Toggle UI Theme">💡</button>
+        </div>
     </header>
 
     <div class="dashboard-grid">
+        
         <div class="panel module-map">
             <div class="panel-header">
-                <span>Global Ground Track</span>
-                <span>PROJECTION: MERCATOR</span>
+                <span>Global Ground Track (Tactical Raster)</span>
+                <span>PROJECTION: EQUIRECTANGULAR</span>
             </div>
+            
             <canvas id="orbit-map"></canvas>
-            <div style="position:absolute; bottom:10px; left:10px; font-size: 0.75rem;">
-                <span style="color: var(--nominal)">● SATELLITE</span> | 
-                <span style="color: var(--warning)">● DEBRIS</span> | 
+            
+            <div style="position:absolute; bottom:15px; left:15px; font-size: 0.8rem; background: var(--panel); padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border); font-weight: bold; z-index: 10;">
+                <span style="color: var(--nominal)">● PAYLOAD</span> &nbsp;|&nbsp; 
+                <span style="color: var(--warning)">● THREAT</span> &nbsp;|&nbsp; 
                 <span style="color: var(--accent)">▲ GROUND LINK</span>
             </div>
         </div>
 
         <div class="panel module-bullseye">
             <div class="panel-header">
-                <span>Conjunction Bullseye</span>
-                <span id="target-lock">TARGET: AUTO</span>
+                <span>Conjunction Bullseye (<120km)</span>
+                <span id="target-lock" style="color: var(--text)">TARGET: AUTO</span>
             </div>
             <canvas id="bullseye-map"></canvas>
             
-            <div class="panel-header" style="border-top: 1px solid rgba(255,255,255,0.05);">
+            <div class="panel-header" style="border-top: 1px solid var(--border);">
                 <span>Active Telemetry Feed</span>
             </div>
             <div class="telemetry-container">
                 <table>
                     <thead>
-                        <tr><th>ID</th><th>FUEL(kg)</th><th>STATUS</th><th>LOS</th></tr>
+                        <tr><th>ID</th><th>ΔV / MASS</th><th>STATUS</th></tr>
                     </thead>
                     <tbody id="sat-table-body"></tbody>
                 </table>
@@ -150,151 +262,282 @@
         </div>
 
         <div class="panel module-timeline">
-            <div class="panel-header" style="margin-bottom: 10px;">
-                <span>Automated Maneuver Scheduler (Gantt)</span>
-                <span>T-MINUS 60 MIN WINDOW</span>
+            <div class="panel-header" style="margin-bottom: 5px;">
+                <span>Automated Maneuver Scheduler</span>
+                <span>PROJECTION: NEXT 60 MINUTES</span>
             </div>
-            <div id="timeline-container" style="overflow-y: auto; height: calc(100% - 30px);">
-                </div>
+            <div class="timeline-axis">
+                <div class="time-tick">T-0</div>
+                <div class="time-tick">T+15</div>
+                <div class="time-tick">T+30</div>
+                <div class="time-tick">T+45</div>
+                <div class="time-tick">T+60</div>
+            </div>
+            <div id="timeline-container" style="overflow-y: auto; flex: 1;"></div>
         </div>
     </div>
 
     <script>
         /**
-         * VYOM-SARATHI FRONTEND RENDERING ENGINE
-         * Utilizes HTML5 Canvas API to bypass DOM manipulation bottlenecks, 
-         * sustaining 60FPS while rendering 10,000+ localized orbital objects.
+         * Helper function to extract computed CSS variables for Canvas rendering.
+         * Ensures semantic colors remain perfectly synced between DOM and Canvas API.
          */
+        function getVar(name) { 
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); 
+        }
+
+        // Initialize high-resolution base map (Equirectangular Projection)
+        const earthImg = new Image();
+        earthImg.src = 'https://unpkg.com/three-globe/example/img/earth-day.jpg';
+
+        // --- Theme Engine ---
+        const themeBtn = document.getElementById('theme-toggle');
+        themeBtn.addEventListener('click', () => {
+            const root = document.documentElement;
+            const isDark = root.getAttribute('data-theme') === 'dark';
+            root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            drawMap(); 
+            drawBullseye();
+        });
+
+        // --- Virtual Camera State ---
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let dragStartX = 0; 
+        let dragStartY = 0;
+
+        /**
+         * Restricts camera panning to prevent the viewport from detaching
+         * from the underlying raster map boundaries.
+         */
+        function clampPan() {
+            const maxPanX = mapCanvas.width - (mapCanvas.width * zoom);
+            const maxPanY = mapCanvas.height - (mapCanvas.height * zoom);
+            panX = Math.min(0, Math.max(panX, maxPanX));
+            panY = Math.min(0, Math.max(panY, maxPanY));
+        }
+
+        function resetCamera() {
+            zoom = 1;
+            panX = 0;
+            panY = 0;
+            clampPan();
+            drawMap();
+        }
+
+        // --- Hardware Context Initialization ---
         const mapCanvas = document.getElementById('orbit-map');
         const mapCtx = mapCanvas.getContext('2d');
         const radarCanvas = document.getElementById('bullseye-map');
         const radarCtx = radarCanvas.getContext('2d');
         
-        // Internal state decoupled from render loop
+        // Global application state
         let simData = { satellites: [], debris_cloud: [], timestamp: "" };
         let selectedSatId = null;
-        
-        // Ground Segment Network definitions (WGS84)
+        let satTrails = {};
+
+        // Official ground station geodetic locations
         const stations = [
-            { id: "GS-001", lat: 13.0333, lon: 77.5167 },
-            { id: "GS-002", lat: 78.2297, lon: 15.4077 },
-            { id: "GS-003", lat: 35.4266, lon: -116.8900 },
-            { id: "GS-004", lat: -53.1500, lon: -70.9167 },
-            { id: "GS-005", lat: 28.5450, lon: 77.1926 },
-            { id: "GS-006", lat: -77.8463, lon: 166.6682 }
+            { id: "GS-001 (BLR)", lat: 13.0333, lon: 77.5167 },
+            { id: "GS-002 (DEL)", lat: 28.5450, lon: 77.1926 },
+            { id: "GS-003 (SVAL)", lat: 78.2297, lon: 15.4077 },
+            { id: "GS-004 (GLD)", lat: 35.4266, lon: -116.8900 }
         ];
 
-        // Ensure canvas 1:1 pixel mapping with CSS container dimensions
+        // --- Input Handling & Interactive Viewport ---
+        mapCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.15;
+            const delta = e.deltaY < 0 ? 1 + zoomSpeed : 1 - zoomSpeed;
+            
+            // Calculate screen-to-world cursor projection
+            const rect = mapCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left; 
+            const mouseY = e.clientY - rect.top;
+            const worldX = (mouseX - panX) / zoom; 
+            const worldY = (mouseY - panY) / zoom;
+
+            zoom *= delta;
+            zoom = Math.max(1, Math.min(zoom, 15)); // Restrict affine scale
+            
+            // Re-anchor pan to maintain cursor focal point
+            panX = mouseX - worldX * zoom; 
+            panY = mouseY - worldY * zoom;
+            
+            clampPan(); 
+            drawMap();
+        });
+
+        mapCanvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragStartX = e.clientX - panX; 
+            dragStartY = e.clientY - panY;
+        });
+        
+        window.addEventListener('mouseup', () => isDragging = false);
+        
+        mapCanvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - dragStartX; 
+            panY = e.clientY - dragStartY;
+            clampPan(); 
+            drawMap();
+        });
+
+        // Responsive canvas scaling
         function resize() {
             mapCanvas.width = mapCanvas.parentElement.clientWidth;
-            mapCanvas.height = mapCanvas.parentElement.clientHeight - 30;
+            mapCanvas.height = mapCanvas.parentElement.clientHeight - 40;
             radarCanvas.width = radarCanvas.parentElement.clientWidth;
             radarCanvas.height = 250;
+            resetCamera(); 
         }
         window.addEventListener('resize', resize);
-        resize();
+        setTimeout(resize, 100); // Allow DOM reflow before initial sizing
 
         /**
-         * Transforms Geodetic coordinates (Lat/Lon) to a standard 2D Mercator projection.
+         * Projects Geodetic coordinates (Lat/Lon) to screen-space pixels.
+         * Integrates current affine camera transformations (zoom/pan).
          */
-        function proj(lat, lon, canvas) {
-            const x = (lon + 180) * (canvas.width / 360);
-            const y = (90 - lat) * (canvas.height / 180);
-            return { x, y };
+        function proj(lat, lon) {
+            const baseW = mapCanvas.width;
+            const baseH = mapCanvas.height;
+            const x = (lon + 180) * (baseW / 360);
+            const y = (90 - lat) * (baseH / 180);
+            return { x: (x * zoom) + panX, y: (y * zoom) + panY };
         }
 
-        /**
-         * Primary Render Loop for the Global Map
-         */
+        // ==========================================================================
+        // MAIN RENDER PIPELINE
+        // ==========================================================================
+        
         function drawMap() {
+            // Flush frame buffer
             mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
-            
-            // Render Solar Terminator Line (Approximation for Eclipse Zone tracking)
-            const timeOffset = Date.now() / 100000; 
-            mapCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-            mapCtx.beginPath();
-            mapCtx.moveTo(0, mapCanvas.height);
-            for (let x = 0; x <= mapCanvas.width; x += 10) {
-                const lon = (x / mapCanvas.width) * 360 - 180;
-                const termY = mapCanvas.height/2 + Math.sin((lon * Math.PI / 180) + timeOffset) * (mapCanvas.height/3);
-                mapCtx.lineTo(x, termY);
+            const c_accent = getVar('--accent');
+
+            // Base Raster layer
+            if (earthImg.complete) {
+                mapCtx.drawImage(earthImg, panX, panY, mapCanvas.width * zoom, mapCanvas.height * zoom);
             }
-            mapCtx.lineTo(mapCanvas.width, 0); mapCtx.lineTo(0, 0); mapCtx.fill();
 
-            // Render Ground Segment Nodes
-            mapCtx.fillStyle = 'var(--accent)';
+            // Layer 1: Ground Station Infrastructure
+            mapCtx.fillStyle = '#00ffcc'; 
             stations.forEach(gs => {
-                const pos = proj(gs.lat, gs.lon, mapCanvas);
-                mapCtx.beginPath();
-                mapCtx.moveTo(pos.x, pos.y - 4);
-                mapCtx.lineTo(pos.x - 4, pos.y + 4);
-                mapCtx.lineTo(pos.x + 4, pos.y + 4);
-                mapCtx.fill();
+                const pos = proj(gs.lat, gs.lon);
+                if (pos.x > 0 && pos.x < mapCanvas.width && pos.y > 0 && pos.y < mapCanvas.height) {
+                    mapCtx.beginPath();
+                    mapCtx.moveTo(pos.x, pos.y - 6);
+                    mapCtx.lineTo(pos.x - 5, pos.y + 4);
+                    mapCtx.lineTo(pos.x + 5, pos.y + 4);
+                    mapCtx.fill();
+                    
+                    mapCtx.font = "bold 11px Consolas";
+                    mapCtx.fillText(gs.id, pos.x + 8, pos.y + 4);
+                }
             });
 
-            // Render Debris Cloud (Note: fillRect used over arc for massive performance gain)
-            mapCtx.fillStyle = 'rgba(255, 51, 102, 0.6)';
+            // Layer 2: Debris Heatmap
+            // Implements dynamic scalar (dSize) to prevent sub-pixel rendering loss at high zoom
+            mapCtx.fillStyle = 'rgba(255, 51, 102, 0.7)'; 
+            const dSize = Math.max(2, Math.min(zoom * 0.8, 4)); 
+            const dOffset = dSize / 2;
+
             simData.debris_cloud.forEach(d => {
-                const pos = proj(d[1], d[2], mapCanvas);
-                mapCtx.fillRect(pos.x, pos.y, 1.5, 1.5);
+                const pos = proj(d[1], d[2]);
+                // Viewport culling optimization
+                if (pos.x > -5 && pos.x < mapCanvas.width + 5 && pos.y > -5 && pos.y < mapCanvas.height + 5) {
+                    mapCtx.fillRect((pos.x | 0) - dOffset, (pos.y | 0) - dOffset, dSize, dSize);
+                }
             });
 
-            // Render Active Constellation and Metadata
+            // Layer 3: Satellite Constellation & Vectors
             simData.satellites.forEach((sat, i) => {
-                const pos = proj(sat.lat, sat.lon, mapCanvas);
-                
-                // Auto-lock onto primary payload if no target selected
-                if(i === 0 && !selectedSatId) selectedSatId = sat.id;
+                const pos = proj(sat.lat, sat.lon);
+                if(i === 0 && !selectedSatId) selectedSatId = sat.id; // Auto-target fallback
 
-                // Render Predicted Trajectory Vector
-                mapCtx.strokeStyle = 'rgba(51, 255, 153, 0.2)';
-                mapCtx.setLineDash([2, 4]);
-                mapCtx.beginPath();
-                mapCtx.moveTo(pos.x, pos.y);
-                const nextPos = proj(sat.lat, sat.lon + 15, mapCanvas); 
-                mapCtx.lineTo(nextPos.x, nextPos.y);
-                mapCtx.stroke();
-                mapCtx.setLineDash([]);
-
-                // Render active communication laser links
+                // Render active LOS communication links
                 if (sat.los_active) {
-                    const targetGs = stations.find(s => Math.abs(s.lat - sat.lat) < 40 && Math.abs(s.lon - sat.lon) < 40); 
-                    if (targetGs) {
-                        const gsPos = proj(targetGs.lat, targetGs.lon, mapCanvas);
-                        mapCtx.strokeStyle = 'rgba(0, 255, 204, 0.4)';
-                        mapCtx.lineWidth = 1;
-                        mapCtx.beginPath();
-                        mapCtx.moveTo(pos.x, pos.y); mapCtx.lineTo(gsPos.x, gsPos.y);
-                        mapCtx.stroke();
-                    }
+                    let closestGs = stations[0];
+                    let minDist = Infinity;
+                    stations.forEach(gs => {
+                        const d = Math.pow(sat.lat - gs.lat, 2) + Math.pow(sat.lon - gs.lon, 2);
+                        if(d < minDist) { minDist = d; closestGs = gs; }
+                    });
+                    const gsPos = proj(closestGs.lat, closestGs.lon);
+                    mapCtx.beginPath();
+                    mapCtx.moveTo(pos.x, pos.y);
+                    mapCtx.lineTo(gsPos.x, gsPos.y);
+                    mapCtx.strokeStyle = 'rgba(0, 255, 204, 0.5)';
+                    mapCtx.lineWidth = 1.5;
+                    mapCtx.stroke();
                 }
 
-                // Render Spacecraft Position
-                mapCtx.fillStyle = sat.id === selectedSatId ? '#fff' : (sat.fuel_kg < 5.0 ? 'var(--warning)' : 'var(--nominal)');
+                // Render historical ground track trails
+                if(!satTrails[sat.id]) satTrails[sat.id] = [];
+                satTrails[sat.id].push({lat: sat.lat, lon: sat.lon});
+                if(satTrails[sat.id].length > 15) satTrails[sat.id].shift();
+                
+                if(satTrails[sat.id].length > 1) {
+                    mapCtx.beginPath();
+                    const startPos = proj(satTrails[sat.id][0].lat, satTrails[sat.id][0].lon);
+                    mapCtx.moveTo(startPos.x, startPos.y);
+                    for(let j=1; j<satTrails[sat.id].length; j++) {
+                        const nextPos = proj(satTrails[sat.id][j].lat, satTrails[sat.id][j].lon);
+                        mapCtx.lineTo(nextPos.x, nextPos.y);
+                    }
+                    mapCtx.strokeStyle = sat.status === 'OUTAGE' ? '#ff3366' : '#00ff66';
+                    mapCtx.lineWidth = 2.5;
+                    mapCtx.stroke();
+                }
+
+                // Primary payload marker
+                mapCtx.fillStyle = sat.id === selectedSatId ? '#ffffff' : (sat.status === 'OUTAGE' ? '#ff3366' : '#00ff66');
+                mapCtx.shadowBlur = 10;
+                mapCtx.shadowColor = mapCtx.fillStyle;
                 mapCtx.beginPath();
-                mapCtx.arc(pos.x, pos.y, sat.id === selectedSatId ? 4 : 3, 0, Math.PI * 2);
+                mapCtx.arc((pos.x | 0), (pos.y | 0), 4.5, 0, Math.PI * 2);
                 mapCtx.fill();
+                mapCtx.shadowBlur = 0; 
+
+                // Active targeting reticle
+                if (sat.id === selectedSatId) {
+                    mapCtx.strokeStyle = '#00ffcc';
+                    mapCtx.lineWidth = 2.5;
+                    const r = 16; 
+                    mapCtx.beginPath();
+                    mapCtx.moveTo(pos.x - r, pos.y - r + 5); mapCtx.lineTo(pos.x - r, pos.y - r); mapCtx.lineTo(pos.x - r + 5, pos.y - r); 
+                    mapCtx.moveTo(pos.x + r - 5, pos.y - r); mapCtx.lineTo(pos.x + r, pos.y - r); mapCtx.lineTo(pos.x + r, pos.y - r + 5); 
+                    mapCtx.moveTo(pos.x - r, pos.y + r - 5); mapCtx.lineTo(pos.x - r, pos.y + r); mapCtx.lineTo(pos.x - r + 5, pos.y + r); 
+                    mapCtx.moveTo(pos.x + r - 5, pos.y + r); mapCtx.lineTo(pos.x + r, pos.y + r); mapCtx.lineTo(pos.x + r, pos.y + r - 5); 
+                    mapCtx.stroke();
+                }
             });
         }
 
-        /**
-         * Polar Coordinate Radar Rendering
-         * Calculates relative planar distances from the locked target to nearby debris.
-         */
+        let radarAngle = 0;
         function drawBullseye() {
             radarCtx.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
-            const cx = radarCanvas.width / 2;
-            const cy = radarCanvas.height / 2;
+            const cx = radarCanvas.width / 2 | 0;
+            const cy = radarCanvas.height / 2 | 0;
+            const c_accent = getVar('--accent');
 
-            // Render range rings
-            radarCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+            // Radar sweep animation
+            radarAngle += 0.05;
+            radarCtx.beginPath();
+            radarCtx.moveTo(cx, cy);
+            radarCtx.lineTo(cx + Math.cos(radarAngle)*120, cy + Math.sin(radarAngle)*120);
+            radarCtx.strokeStyle = c_accent;
+            radarCtx.lineWidth = 2;
+            radarCtx.stroke();
+
+            // Range rings (40km, 80km, 120km)
+            radarCtx.strokeStyle = getVar('--border');
             [40, 80, 120].forEach(r => {
                 radarCtx.beginPath(); radarCtx.arc(cx, cy, r, 0, Math.PI*2); radarCtx.stroke();
             });
-            
-            // Center target payload
-            radarCtx.fillStyle = 'var(--nominal)';
-            radarCtx.beginPath(); radarCtx.arc(cx, cy, 3, 0, Math.PI*2); radarCtx.fill(); 
 
             if(!selectedSatId) return;
             document.getElementById('target-lock').innerText = `TARGET: ${selectedSatId.substring(0,8)}`;
@@ -302,72 +545,79 @@
             const target = simData.satellites.find(s => s.id === selectedSatId);
             if(!target) return;
 
-            // Relative proximity coordinate transformation
+            // Center payload
+            radarCtx.fillStyle = target.status === 'OUTAGE' ? '#ff3366' : '#00ff66';
+            radarCtx.beginPath(); radarCtx.arc(cx, cy, 4, 0, Math.PI*2); radarCtx.fill(); 
+
+            // Relative conjunction assessment mapping
             simData.debris_cloud.forEach(d => {
                 const dLat = d[1] - target.lat;
                 const dLon = d[2] - target.lon;
                 
-                // Bounding box filter to avoid calculating distant objects
+                // Fast culling before expensive sqrt operations
                 if(Math.abs(dLat) < 10 && Math.abs(dLon) < 10) {
                     const dist = Math.sqrt(dLat*dLat + dLon*dLon) * 15; 
                     const angle = Math.atan2(dLat, dLon);
-                    
                     const x = cx + Math.cos(angle) * dist;
                     const y = cy + Math.sin(angle) * dist;
                     
                     if(dist < 120) {
-                        radarCtx.fillStyle = dist < 40 ? 'var(--critical)' : 'var(--warning)';
-                        radarCtx.fillRect(x, y, 2, 2);
+                        radarCtx.fillStyle = dist < 40 ? '#ff9900' : '#ff3366';
+                        radarCtx.beginPath(); radarCtx.arc((x|0), (y|0), 2.5, 0, Math.PI*2); radarCtx.fill();
                     }
                 }
             });
         }
 
-        /**
-         * Updates DOM elements for Telemetry and Timeline.
-         * Note: Rebuilding innerHTML is acceptable here due to the small footprint 
-         * of the subset (top 10 satellites) being rendered.
-         */
+        // --- DOM Update Pipeline ---
         function updateUI() {
             const tbBody = document.getElementById('sat-table-body');
             const tlContainer = document.getElementById('timeline-container');
-            tbBody.innerHTML = ''; tlContainer.innerHTML = '';
             
-            // Prioritize spacecraft with critical propellant levels
+            // Clear current DOM state (acceptable for prototype scale)
+            tbBody.innerHTML = ''; 
+            tlContainer.innerHTML = '';
+            
             const sortedSats = [...simData.satellites].sort((a,b) => a.fuel_kg - b.fuel_kg);
             
             sortedSats.forEach((sat, index) => {
-                
-                // 1. Build Telemetry Row
+                // Construct telemetry row
                 const tr = document.createElement('tr');
                 tr.style.cursor = 'pointer';
+                tr.style.background = sat.id === selectedSatId ? 'rgba(0, 255, 204, 0.1)' : 'transparent';
                 tr.onclick = () => { selectedSatId = sat.id; drawBullseye(); drawMap(); };
                 
-                let fuelClass = sat.fuel_kg < 10.0 ? 'val-bad' : 'val-good';
-                let statusClass = sat.status === 'OUTAGE' ? 'val-warn' : 'val-good';
+                const fuelPercent = (sat.fuel_kg / 50.0) * 100;
+                let fuelClass = sat.fuel_kg < 10.0 ? 'var(--warning)' : (sat.fuel_kg < 25.0 ? 'var(--critical)' : 'var(--nominal)');
+                let statusClass = sat.status === 'OUTAGE' ? 'status-outage' : 'status-nominal';
                 
                 tr.innerHTML = `
-                    <td style="color:${sat.id===selectedSatId?'#fff':''}">${sat.id.substring(0, 8)}</td>
-                    <td class="${fuelClass}">${sat.fuel_kg.toFixed(1)}</td>
+                    <td style="font-weight:bold;">${sat.id.substring(0, 8)}</td>
+                    <td>
+                        <div style="color:${fuelClass}; margin-bottom:2px; text-align:right; font-weight:bold;">${sat.fuel_kg.toFixed(2)} kg</div>
+                        <div class="fuel-bar-bg"><div class="fuel-bar-fg" style="width:${fuelPercent}%; background:${fuelClass}"></div></div>
+                    </td>
                     <td class="${statusClass}">${sat.status}</td>
-                    <td style="color:${sat.los_active?'var(--accent)':'#555'}">${sat.los_active?'LINKED':'N/A'}</td>
                 `;
                 tbBody.appendChild(tr);
 
-                // 2. Build Maneuver Scheduler Block
+                // Construct Gantt schedule blocks (Top 10 only to save DOM nodes)
                 if(index < 10) { 
                     const ganttRow = document.createElement('div');
                     ganttRow.className = 'gantt-row';
                     
-                    // Visualization placeholder pending integration with the maneuver/schedule API endpoint
-                    const isCooling = Math.random() > 0.7;
-                    const blockHtml = isCooling 
-                        ? `<div class="gantt-block gantt-cooldown" style="left: ${Math.random()*80}%; width: 20%;"></div>`
-                        : '';
+                    let trackHtml = '';
+                    if (sat.status === 'OUTAGE') {
+                        // Projects a simulated 10-minute thruster cooldown period
+                        trackHtml = `
+                            <div class="cooldown-block" style="left: 0%; width: 16.6%;"></div>
+                            <div class="burn-chevron" style="left: 0%;">»</div>
+                        `;
+                    }
 
                     ganttRow.innerHTML = `
                         <div class="gantt-label">${sat.id.substring(0,6)}</div>
-                        <div class="gantt-track">${blockHtml}</div>
+                        <div class="gantt-track">${trackHtml}</div>
                     `;
                     tlContainer.appendChild(ganttRow);
                 }
@@ -375,9 +625,8 @@
         }
 
         /**
-         * Telemetry Ingestion Pipeline
-         * Polls the high-throughput snapshot endpoint to decouple 
-         * UI rendering latency from backend physics integration.
+         * Asynchronous polling mechanism to retrieve backend telemetry snapshot.
+         * Fails gracefully without crashing the render loop if backend is offline.
          */
         async function fetchTelemetry() {
             try {
@@ -385,18 +634,22 @@
                 if (res.ok) {
                     simData = await res.json();
                     document.getElementById('clock').innerText = `SYS_TIME: ${simData.timestamp.replace('T', ' ').replace('Z', '')}`;
-                    
-                    // Trigger render sequence
+                    document.getElementById('clock').style.color = "var(--text)";
                     drawMap();
                     drawBullseye();
                     updateUI();
                 }
             } catch (err) {
-                console.error("Telemetry Link Offline. Awaiting ACM connection...");
+                document.getElementById('clock').innerText = "TELEMETRY LINK OFFLINE";
+                document.getElementById('clock').style.color = "var(--warning)";
             }
         }
 
-        // Initialize 1Hz polling frequency
+        // --- System Boot ---
+        earthImg.onload = () => drawMap();
+        
+        // Decoupled engine timers: 30 FPS Render Loop vs 1Hz Data Fetch
+        setInterval(() => { drawMap(); drawBullseye(); }, 1000 / 30);
         setInterval(fetchTelemetry, 1000);
     </script>
 </body>
