@@ -1,32 +1,38 @@
-# Base environment pinned to NSH 2026 specifications
+# ==============================================================================
+# Vyom-Sarathi ACM - Production Container
+# Architecture: Ubuntu 22.04 Runtime (NSH 2026 Compliant)
+# ==============================================================================
+
+# Strictly pinned to Ubuntu 22.04 as mandated by NSH 2026 Section 8.
+# Ensures deterministic builds and prevents dependency drift during auto-grading.
 FROM ubuntu:22.04
 
-# Suppress prompts for automated grading
+# Suppress interactive prompts (e.g., tzdata) to prevent build pipeline hangs.
+# Force Python stdout/stderr to be unbuffered for real-time grader logging.
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Python optimization: disable bytecode and enable unbuffered logging for telemetry
-ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install runtime and build-essential for Numba JIT-compilation support
-RUN apt-get update && apt-get install -y \
+# Initialize core system dependencies.
+# Apt caches are explicitly cleared within the same layer to minimize the final image footprint.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
-    python3-dev \
-    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Establish the primary operational directory for the payload
 WORKDIR /app
 
-# Cache dependency layer
+# Isolate requirement installation to a dedicated Docker layer.
+# This maximizes build cache efficiency during iterative astrodynamics engine updates.
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Copy ACM source (core/ and dashboard/)
+# Mount the complete application source (Astrodynamics Engine + API + Visualizer)
 COPY . .
 
-# Expose port 8000 for simulation engine ingress
+# Expose the designated ingress port for the hackathon evaluation harness
 EXPOSE 8000
 
-# Bind to 0.0.0.0 to allow external grader communication
-CMD ["uvicorn", "core.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Boot the high-performance ASGI daemon.
+# Explicitly bound to 0.0.0.0 to guarantee external network visibility for the grader scripts.
+CMD ["python3", "-m", "uvicorn", "core.main:app", "--host", "0.0.0.0", "--port", "8000"]
