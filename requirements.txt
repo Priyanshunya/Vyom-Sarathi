@@ -1,7 +1,24 @@
+# ==============================================================================
+# Vyom-Sarathi ACM - Production Dependencies
+# Target Environment: Ubuntu 22.04 / Python 3.10+
+# ==============================================================================
+
+# --- Web Framework & ASGI Server ---
+# FastAPI provides high-throughput, low-latency endpoints required for high-frequency telemetry.
 fastapi==0.110.0
+# Uvicorn acts as the production-grade ASGI web server binding to 0.0.0.0.
 uvicorn==0.28.0
+# Pydantic ensures strict data validation and fast JSON serialization for the API payloads.
 pydantic==2.6.4
+
+# --- Astrodynamics & Physics Engine ---
+# NumPy handles the dense 6-DOF state vector matrices and quaternion math.
 numpy==1.26.4
+# SciPy provides the cKDTree implementation, bypassing O(N^2) bottlenecks for conjunction queries.
 scipy==1.12.0
+# Numba acts as the LLVM JIT compiler, allowing Python RK4 functions to run at native C speeds.
 numba==0.59.0
+
+# --- Networking & Utility ---
+# Requests is included for synchronous HTTP testing and potential external grader webhooks.
 requests==2.31.0
